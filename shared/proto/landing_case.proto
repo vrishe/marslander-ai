@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+import "proto/crumbs.proto";
+
+package marslander.pb;
+
+message landing_case {
+
+  uint64 id     = 1;
+  int32  fuel   = 2;
+  int32  thrust = 3;
+  sint32 tilt   = 4;
+
+  point_int32  position = 5;
+  point_double velocity = 6;
+
+           span_int32  safe_area = 7;
+  repeated point_int32 surface   = 8;
+
+}

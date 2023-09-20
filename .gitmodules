@@ -1,0 +1,12 @@
+[submodule "3rd-party/sockpp"]
+	path = 3rd-party/sockpp
+	url = https://github.com/fpagliughi/sockpp.git
+[submodule "3rd-party/googletest"]
+	path = 3rd-party/googletest
+	url = https://github.com/google/googletest.git
+[submodule "3rd-party/spdlog"]
+	path = 3rd-party/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "3rd-party/json"]
+	path = 3rd-party/json
+	url = https://github.com/nlohmann/json.git

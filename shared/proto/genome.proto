@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package marslander.pb;
+
+message genome {
+
+  uint64 id = 1;
+
+  repeated double genes = 2;
+
+}

@@ -1,0 +1,7 @@
+build/
+lib/
+
+*.sublime-workspace
+
+training.dat
+replay_*.json

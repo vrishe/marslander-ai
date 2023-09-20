@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package marslander.pb;
+
+message span_int32 {
+  int32 start = 1;
+  int32 end   = 2;
+}
+
+message point_int32 {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message point_double {
+  double x = 1;
+  double y = 2;
+}

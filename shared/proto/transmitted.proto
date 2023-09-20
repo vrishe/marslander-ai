@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+import "proto/genome.proto";
+import "proto/landing_case.proto";
+
+package marslander.pb;
+
+// CASES
+
+// Request (must be empty) / Response (may not be empty)
+message cases {
+  repeated landing_case data = 1;
+}
+
+// OUTCOMES
+
+// Request (data may be empty, when job hasn't yet started)
+message outcomes {
+
+  uint32 capacity = 1;
+  string client_name = 2;
+  uint64 generation = 3;
+
+  message stats {
+    uint64 case_id   = 1;
+    uint64 genome_id = 2;
+    double rating    = 3;
+  }
+
+  repeated stats data = 4;
+}
+
+// Response (may be empty)
+message population {
+
+  uint64 generation = 1;
+
+  repeated genome data = 2;
+
+}

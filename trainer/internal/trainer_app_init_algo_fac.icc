@@ -1,0 +1,287 @@
+// TODO: make sure implicit defaults are serialized
+
+#include <initializer_list>
+#include <map>
+#include <vector>
+
+class basic_factory {
+  using normalizer_pfun = void (*) (algorithm_args&);
+  using validator_pfun = bool (*) (
+    const algorithm_args&, std::vector<std::string>&);
+
+  using alias_map_t = std::map<std::string, std::string>;
+  const alias_map_t _alias;
+
+  using normalizers_map_t = std::map<std::string, normalizer_pfun>;
+  const normalizers_map_t _normalizers;
+
+  using validators_map_t = std::map<std::string, validator_pfun>;
+  const validators_map_t _validators;
+
+protected:
+  basic_factory(
+    std::initializer_list<alias_map_t::value_type> alias,
+    std::initializer_list<normalizers_map_t::value_type> normalizers,
+    std::initializer_list<validators_map_t::value_type> validators)
+  : _alias{alias},
+    _normalizers{normalizers},
+    _validators{validators}
+  {}
+
+  bool quick_validate_args(const algorithm_args& args) {
+    auto a = _alias.find(args.name);
+    if (a == _alias.end()) return false;
+    auto v = _validators.find(args.name);
+    [[maybe_unused]] std::vector<std::string> e;
+    return v == _validators.end() || (v->second)(args, e);
+  }
+
+public:
+  virtual ~basic_factory() = default;
+
+  using errors_t = std::vector<std::string>;
+
+  bool validate_args(algorithm_args& args, errors_t& errors) {
+
+    std::vector<std::string> e;
+
+    auto a = _alias.find(args.name);
+    if (a == _alias.end()) {
+      e.push_back("unknown algo name");
+      errors = std::move(e);
+      return false;
+    }
+    algorithm_args result{ a->second, args.values };
+    auto v = _validators.find(result.name);
+    if (v != _validators.end() && !(v->second)(result, e)) {
+      errors = std::move(e);
+      return false;
+    }
+    auto n = _normalizers.find(result.name);
+    if (n != _normalizers.end()) (n->second)(result);
+    result.values.shrink_to_fit();
+    args = std::move(result);
+    return true;
+  }
+};
+
+class xvr_factory final : public basic_factory {
+
+  static void normalize_intermediate(algorithm_args& args) {
+    args.values.push_back(1.); // ratio
+    args.values.resize(1);
+  }
+
+  static void normalize_heuristic(algorithm_args& args) {
+    args.values.push_back(1.); // ratio
+    args.values.resize(1);
+  }
+
+  static void normalize_laplace(algorithm_args& args) {
+    args.values.resize(2);
+  }
+
+  static bool validate_laplace(const algorithm_args& args,
+      std::vector<std::string>& errors) {
+    if (args.values.size() < 2) {
+      errors.push_back("two parameters 'a' and 'b' required.");
+      return false;
+    }
+
+    return true;
+  }
+
+  static void normalize_scattered(algorithm_args& args) {
+    args.values.push_back(.5); // scatter threshold
+    args.values.resize(1);
+  }
+
+  static bool validate_scattered(const algorithm_args& args,
+      std::vector<std::string>& errors) {
+    auto sz = args.values.size();
+    if (sz > 0 && (args.values[0] <= 0 || args.values[0] >= 1)) {
+      errors.push_back("'t' must stay inside (0; 1) interval.");
+      return false;
+    }
+
+    return true;
+  }
+
+public:
+  xvr_factory() : basic_factory(
+    {
+      {"default", "intermediate"},
+
+      {"intermediate", "intermediate"},
+      {"intm",         "intermediate"},
+
+      {"heuristic", "heuristic"},
+      {"heur",      "heuristic"},
+
+      {"laplace", "laplace"},
+      {"lapx",    "laplace"},
+      {"lx",      "laplace"},
+
+      {"scattered", "scattered"},
+      {"scatter",   "scattered"},
+      {"sctd",      "scattered"},
+    },
+    {
+      {"intermediate", &xvr_factory::normalize_intermediate},
+      {"heuristic",    &xvr_factory::normalize_heuristic},
+      {"laplace",      &xvr_factory::normalize_laplace},
+      {"scattered",    &xvr_factory::normalize_scattered},
+    },
+    {
+      {"laplace",      &xvr_factory::validate_laplace},
+      {"scattered",    &xvr_factory::validate_scattered},
+    })
+  {}
+
+  using result_type = unique_ptr<crossover_algo>;
+
+  template<typename RNG>
+  bool instantiate(const algorithm_args& args, shared_ptr<RNG> prng,
+      result_type& result) {
+    if (!quick_validate_args(args)) return false;
+
+         if (args.name == "intermediate") result = make_unique<
+          algo::xvr::intermediate<RNG>>(prng, args.values[0]);
+    else if (args.name == "heuristic")    result = make_unique<
+          algo::xvr::heuristic<RNG>>(prng, args.values[0]);
+    else if (args.name == "laplace")      result = make_unique<
+          algo::xvr::laplace<RNG>>(prng, args.values[0], args.values[1]);
+    else if (args.name == "scattered")    result = make_unique<
+          algo::xvr::scattered<RNG>>(prng, args.values[0]);
+    else return false;
+
+    return true;
+  }
+};
+
+class mtn_factory final : public basic_factory {
+
+  static void normalize_disabled(algorithm_args& args) {
+    args.values.clear();
+  }
+
+  static void normalize_gaussian(algorithm_args& args) {
+    auto sz = args.values.size();
+    if (sz <= 0) args.values.push_back(0);  // threshold
+    if (sz <= 1) args.values.push_back(0);  // mean
+    if (sz <= 2) args.values.push_back(1.); // stddev
+    args.values.resize(3);
+  }
+
+  static bool validate_gaussian(const algorithm_args& args,
+      std::vector<std::string>& errors) {
+    auto sz = args.values.size();
+    if (sz > 0 && args.values[0] < 0) {
+      errors.push_back("'t' must be non-negative.");
+      return false;
+    }
+    if (sz > 2 && args.values[2] <= 0) {
+      errors.push_back("'stddev' must be positive.");
+      return false;
+    }
+
+    return true;
+  }
+
+  static void normalize_power(algorithm_args& args) {
+    args.values.resize(3);
+  }
+
+  static bool validate_power(const algorithm_args& args,
+      std::vector<std::string>& errors) {
+    auto sz = args.values.size();
+    if (sz < 3) {
+      errors.push_back("three parameters 'p', 'xl' and 'xu' required.");
+      return false;
+    }
+    if (args.values[1] > args.values[2]) {
+      errors.push_back("'xl' cannot be greater than 'xu'.");
+      return false;
+    }
+
+    return true;
+  }
+
+  static void normalize_uniform(algorithm_args& args) {
+    args.values.push_back(.01);
+    args.values.resize(3);
+  }
+
+  static bool validate_uniform(const algorithm_args& args,
+      std::vector<std::string>& errors) {
+    auto sz = args.values.size();
+    if (sz < 2) {
+      errors.push_back("two parameters 'a' and 'b' required; 'rate' is optional.");
+      return false;
+    }
+    if (sz > 3 && (args.values[2] < 0 || args.values[2] > 1)) {
+      errors.push_back("'rate' must stay inside [0; 1] interval.");
+      return false;
+    }
+    if (args.values[0] > args.values[1]) {
+      errors.push_back("'a' must be no greater than 'b'.");
+      return false;
+    }
+
+    return true;
+  }
+
+public:
+  mtn_factory() : basic_factory(
+    {
+      {"default", "gaussian"},
+
+      {"gaussian", "gaussian"},
+      {"normal",   "gaussian"},
+
+      {"power", "power"},
+      {"pow",   "power"},
+      {"pwr",   "power"},
+
+      {"uniform", "uniform"},
+      {"unf",     "uniform"},
+
+      {"disabled", "disabled"},
+      {"none",     "disabled"},
+    },
+    {
+      {"disabled", &mtn_factory::normalize_disabled},
+      {"gaussian", &mtn_factory::normalize_gaussian},
+      {"power",    &mtn_factory::normalize_power},
+      {"uniform",  &mtn_factory::normalize_uniform},
+    },
+    {
+      {"gaussian", &mtn_factory::validate_gaussian},
+      {"power",    &mtn_factory::validate_power},
+      {"uniform",  &mtn_factory::validate_uniform},
+    })
+  {}
+
+  using result_type = unique_ptr<mutation_algo>;
+
+  template<typename RNG>
+  bool instantiate(const algorithm_args& args, shared_ptr<RNG> prng,
+      result_type& result) {
+    if (!quick_validate_args(args)) return false;
+
+         if (args.name == "gaussian") result = make_unique<
+          algo::mtn::gaussian<RNG>>(prng, args.values[0], args.values[1],
+            args.values[2]);
+    else if (args.name == "power")    result = make_unique<
+          algo::mtn::power<RNG>>(prng, args.values[0], args.values[1],
+            args.values[2]);
+    else if (args.name == "uniform") result = make_unique<
+          algo::mtn::uniform<RNG>>(prng, args.values[0], args.values[1],
+            args.values[2]);
+    else if (args.name == "disabled") result = make_unique<
+          algo::mtn::none>();
+    else return false;
+
+    return true;
+  }
+};

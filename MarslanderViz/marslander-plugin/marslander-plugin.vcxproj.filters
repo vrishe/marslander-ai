@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="marslander">
+      <UniqueIdentifier>{1e07b048-0dc8-4602-892d-945422742daa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="base64">
+      <UniqueIdentifier>{86048634-307d-4ac2-a510-db9ea9463408}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\common.h">
+      <Filter>marslander</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\constants.h">
+      <Filter>marslander</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\marslander\marslander.h">
+      <Filter>marslander</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\marslander\simulation.h">
+      <Filter>marslander</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\marslander\state.h">
+      <Filter>marslander</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h" />
+    <ClInclude Include="plugin.h" />
+    <ClInclude Include="..\..\base64\base64.h">
+      <Filter>base64</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\shared\marslander\marslander.cpp">
+      <Filter>marslander</Filter>
+    </ClCompile>
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="..\..\base64\base64.cpp">
+      <Filter>base64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\marslander\state_base64.cpp">
+      <Filter>marslander</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
